@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import InputForm from "./InputForm";
 import Results from "./Results";
 
@@ -12,10 +12,14 @@ const TransformerCalculation = () => {
         Umax: 114.97,
         Ikzmin: 4508,
         Ikzmax: 12587,
-        KTTvn: 400 / 5,
-        KTTnn: 1500 / 5,
+        KTTvn: 80,
+        KTTnn: 300,
         KSHvn: 1.73,
         KSHnn: 1,
+        kper: 1.1,
+        kodn: 1,
+        epsi: 0.1,
+        a: 16.0,
     });
     const [results, setResults] = useState(null);
 
@@ -38,13 +42,15 @@ const TransformerCalculation = () => {
             KTTnn,
             KSHvn,
             KSHnn,
+            kper,
+            kodn,
+            epsi,
+            a,
         } = inputs;
 
         // Выполнение расчетов
         const Ivn = Sn / (Uvn * Math.sqrt(3));
         const Inn = Sn / (Unn * Math.sqrt(3));
-        const I2vn = (Ivn * KSHvn) / KTTvn;
-        const I2nn = (Inn * KSHnn) / KTTnn;
 
         const Zsmin =
             Math.pow(Umin, 2) / ((Math.sqrt(3) * Umin * Ikzmin) / 1000);
@@ -56,99 +62,84 @@ const TransformerCalculation = () => {
         const XtvMinus =
             ((Uk / 100) * Math.pow(Uvn - 0.16 * Uvn, 2)) / (Sn / 1000);
 
-        const Ko =
-            2.1 -
-            3.7 *
-                ((Zsmax * (Sn / 1000)) / Math.pow(Uvn, 2) +
-                    0.105 +
-                    Math.max(Uk) / 120);
-        const IudZ = Ko * Ivn;
+        const XtnPlus =
+            ((Uk / 100) * Math.pow(Unn + 0.16 * Unn, 2)) / (Sn / 1000);
+        const XtnMinus =
+            ((Uk / 100) * Math.pow(Unn - 0.16 * Unn, 2)) / (Sn / 1000);
 
-        const Wv = (100 * 80) / (IudZ * Math.sqrt(3));
+        const xresPlus = XtvPlus + XtnPlus + Zsmin;
 
-        const IudZ_true = (100 * 60) / (Wv * Math.sqrt(3));
+        const I2vn = (Ivn * KSHvn) / KTTvn;
+        const I2nn = (Inn * KSHnn) / KTTnn;
+        const Ko = 1.5;
+        const Iszmin = Ko * Ivn;
+        const Icrvn = (Iszmin * KSHvn) / KTTvn;
+        const Wvnrasch = 100 / Icrvn;
+        const Wnrasch = (Wvnrasch * I2vn) / I2nn;
 
-        const Wn = (Wv * I2vn) / I2nn;
+        const Δf = Math.abs(Wnrasch - Wnrasch.toFixed(0)) / Wnrasch;
 
-        const Δf = Math.abs(Wn - Wn.toFixed(0)) / Wn;
+        const Ikvnmax = (1000 * Umax) / (Math.sqrt(3) * (Zsmax + XtvMinus));
+        const Inbrasch = Ikvnmax * (kper * kodn * epsi + 0.01 * a + Δf);
 
-		const Ikvnmax = 1000*Umax/(Math.sqrt(3)*(Zsmax+XtvMinus))
+        const Wt_pred = (Ko * Wnrasch * Inbrasch) / (0.75 * Ikvnmax);
 
-		const Inb = Ikvnmax*(1.1*0.1+0.01*16+Δf)
-
-		const Wt_pred = Ko*Wn*Inb/(0.75*Ikvnmax)
-
-		const Xrezplus = 75.2+0.25+14.3
-
-		const Ik3min = 1000*Umin/(Math.sqrt(3)*Xrezplus)
-
-		const k4 = Math.sqrt(3)*Ik3min/(2*IudZ_true)
-
-		const Inbr = Inb*1.73/80
-
-		const Frab = Inbr*Wv
-
-		const Itorm = Ikvnmax*1.73*I2nn/(80*I2vn)
-
-		const Ftorm = Itorm*Wt_pred
-
-		const tgaras = 1.5*Frab/Ftorm
+        const Xrezplus = 75.2 + 0.25 + 14.3;
+        const Ik3min = (1000 * Umin) / (Math.sqrt(3) * Xrezplus);
+        const k4 = (Math.sqrt(3) * Ik3min) / (2 * Iszmin);
+        const Inb = (Inbrasch * 1.73) / 80;
+        const Frab = Inb * Wvnrasch;
+        const Itorm = (Ikvnmax * 1.73 * I2nn) / (80 * I2vn);
+        const Ftorm = Itorm * Wt_pred;
+        const tgaras = (1.5 * Frab) / Ftorm;
 
         const results = {
             Ivn: Ivn.toFixed(2),
             Inn: Inn.toFixed(2),
-            I2vn: I2vn.toFixed(2),
-            I2nn: I2nn.toFixed(2),
             Zsmin: Zsmin.toFixed(2),
             Zsmax: Zsmax.toFixed(2),
             XtvPlus: XtvPlus.toFixed(2),
             XtvMinus: XtvMinus.toFixed(2),
+            XtnPlus: XtnPlus.toFixed(2),
+            XtnMinus: XtnMinus.toFixed(2),
+            xresPlus: xresPlus.toFixed(2),
+            I2vn: I2vn.toFixed(2),
+            I2nn: I2nn.toFixed(2),
             Ko: Ko.toFixed(2),
-            IudZ: IudZ.toFixed(2),
-            Wv: Wv.toFixed(0),
-            IudZ_true: IudZ_true.toFixed(2),
-            Wn: Wn.toFixed(2),
-			Wn_fix: Wn.toFixed(0),
+            Iszmin: Iszmin.toFixed(2),
+            Icrvn: Icrvn.toFixed(2),
+            Wvnrasch: Math.floor(Wvnrasch),
+            Wnrasch: Math.ceil(Wnrasch),
+            Wnrasch_fix: Wnrasch.toFixed(2),
             Δf: Δf.toFixed(3),
-			Wt_pred: Wt_pred.toFixed(2),
-			Wt_fix: Wt_pred.toFixed(0),
-			Ikvnmax: Ikvnmax.toFixed(2),
-			Inb: Inb.toFixed(2),
-			Xrezplus: Xrezplus.toFixed(2),
-			Ik3min: Ik3min.toFixed(2),
-			k4: k4.toFixed(2),
-			Inbr: Inbr.toFixed(2),
-			Frab: Frab.toFixed(2),
-			Itorm: Itorm.toFixed(2),
-			Ftorm: Ftorm.toFixed(2),
-			tgaras: tgaras.toFixed(2),
+            Wt_fix: Math.floor(Wt_pred),
+            Ikvnmax: Ikvnmax.toFixed(2),
+            Inbrasch: Inbrasch.toFixed(2),
+            Inb: Inb.toFixed(2),
+            Ik3min: Ik3min.toFixed(2),
+            k4: k4.toFixed(2),
+            Frab: Frab.toFixed(2),
+            Itorm: Itorm.toFixed(2),
+            Ftorm: Ftorm.toFixed(2),
+            tgaras: tgaras.toFixed(2),
         };
+
+        console.log();
 
         const formulas = [
             {
-                title: "Номинальный ток трансформатора на высокой стороне (Ivn)",
-                formula: "I_{vn} = \\frac{S_{n}}{U_{vn} \\cdot \\sqrt{3}}",
-                substitution: `I_{vn} = \\frac{${Sn}}{${Uvn} \\cdot \\sqrt{3}}`,
+                title: "Номинальный ток трансформатора на высокой стороне (I(вн)))",
+                formula: "I_{(ВН)} = \\frac{S_{ном}}{U_{ном} \\cdot \\sqrt{3}}",
+                substitution: `I_{(ВН)} = \\frac{${Sn}}{${Uvn} \\cdot \\sqrt{3}}`,
                 result: results.Ivn,
             },
             {
-                title: "Номинальный ток трансформатора на низкой стороне (Inn)",
-                formula: "I_{nn} = \\frac{S_{n}}{U_{nn} \\cdot \\sqrt{3}}",
-                substitution: `I_{nn} = \\frac{${Sn}}{${Unn} \\cdot \\sqrt{3}}`,
+                title: "Номинальный ток трансформатора на низкой стороне (I(нн))",
+                formula: "I_{(НН)} = \\frac{S_{ном}}{U_{ном} \\cdot \\sqrt{3}}",
+                substitution: `I_{(НН)} = \\frac{${Sn}}{${Unn} \\cdot \\sqrt{3}}`,
                 result: results.Inn,
             },
-            {
-                title: "Вторичный номинальный ток на высокой стороне (I2vn)",
-                formula: "I_{2vn} = \\frac{I_{vn} \\cdot K_{SHvn}}{K_{TTvn}}",
-                substitution: `I_{2vn} = \\frac{${results.Ivn} \\cdot ${KSHvn}}{${KTTvn}}`,
-                result: results.I2vn,
-            },
-            {
-                title: "Вторичный номинальный ток на низкой стороне (I2nn)",
-                formula: "I_{2nn} = \\frac{I_{nn} \\cdot K_{SHnn}}{K_{TTnn}}",
-                substitution: `I_{2nn} = \\frac{${results.Inn} \\cdot ${KSHnn}}{${KTTnn}}`,
-                result: results.I2nn,
-            },
+
             {
                 title: "Импеданс системы минимальный (Zsmin)",
                 formula:
@@ -164,104 +155,163 @@ const TransformerCalculation = () => {
                 result: results.Zsmax,
             },
             {
-                title: "Реактативное сопротивление трансформатора плюс (XtvPlus)",
+                title: "Реактативное сопротивление трансформатора плюс ВН (XtvPlus)",
                 formula:
-                    "X_{tvPlus} = \\frac{(U_{k} / 100) \\cdot (U_{vn} + 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
-                substitution: `X_{tvPlus} = \\frac{(${Uk} / 100) \\cdot (${Uvn} + 0.16 \\cdot ${Uvn})^2}{ ${Sn} / 1000}`,
+                    "X_{ТВ+} = \\frac{(U_{k} / 100) \\cdot (U_{vn} + 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
+                substitution: `X_{ТВ+} = \\frac{(${Uk} / 100) \\cdot (${Uvn} + 0.16 \\cdot ${Uvn})^2}{ ${Sn} / 1000}`,
                 result: results.XtvPlus,
             },
             {
-                title: "Реактативное сопротивление трансформатора минус (XtvMinus)",
+                title: "Реактативное сопротивление трансформатора минус ВН (XtvMinus)",
                 formula:
-                    "X_{tvMinus} = \\frac{(U_{k} / 100) \\cdot (U_{vn} - 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
-                substitution: `X_{tvMinus} = \\frac{(${Uk} / 100) \\cdot (${Uvn} - 0.16 \\cdot ${Uvn})^2}{${Sn} / 1000}`,
+                    "X_{ТВ-} = \\frac{(U_{k} / 100) \\cdot (U_{vn} - 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
+                substitution: `X_{ТВ-} = \\frac{(${Uk} / 100) \\cdot (${Uvn} - 0.16 \\cdot ${Uvn})^2}{${Sn} / 1000}`,
                 result: results.XtvMinus,
             },
             {
-                title: "Коэффициент отстройки (Ko)",
+                title: "Реактативное сопротивление трансформатора плюс НН (Xтн+)",
                 formula:
-                    "K_{o} = 2.1 - 3.7 \\cdot ( \\frac{Z_{smax} \\cdot S_{n}}{U_{vn}^2} + 0.105 + \\frac{max(U_{k})}{120})",
-                substitution: `K_{o} = 2.1 - 3.7 \\cdot ( \\frac{${
-                    results.Zsmax
-                } \\cdot ${Sn / 1000}}{${Uvn}^2} + 0.105 + \\frac{${Uk}}{120})`,
-                result: results.Ko,
+                    "X_{ТН+} = \\frac{(U_{k} / 100) \\cdot (U_{нн} + 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
+                substitution: `X_{ТН+} = \\frac{(${Uk} / 100) \\cdot (${Unn} + 0.16 \\cdot ${Unn})^2}{ ${Sn} / 1000}`,
+                result: results.XtnPlus,
             },
             {
-                title: "Предварительная уставка защиты (IudZ')",
-                formula: "I_{udZ}' = K_{o} \\cdot I_{vn}",
-                substitution: `I_{udZ}\' = ${results.Ko} \\cdot ${results.Ivn}`,
-                result: results.IudZ,
-            },
-            {
-                title: "Предварительное число витков реле для стороны ВН (Wv')",
+                title: "Реактативное сопротивление трансформатора минус НН (Xтн-)",
                 formula:
-                    "W_{v} = \\frac{100 \\cdot K_{1B}}{I_{udZ} \\cdot K_{схВ}}",
-                substitution: `W_{v} = \\frac{100 \\cdot 80}{${results.IudZ} \\cdot \\sqrt{3}}`,
-                result: results.Wv,
+                    "X_{ТН-} = \\frac{(U_{k} / 100) \\cdot (U_{нн} - 0.16 \\cdot U_{vn})^2}{S_{n} / 1000}",
+                substitution: `X_{ТН-} = \\frac{(${Uk} / 100) \\cdot (${Unn} - 0.16 \\cdot ${Unn})^2}{${Sn} / 1000}`,
+                result: results.XtnMinus,
             },
             {
-                title: "Уставка защиты для стороны ВН (IуДЗ)",
+                title: "Cопротивление стороны ВН, НН  (приведённое к стороне ВН) в максимальном положении РПН и сопротивление энергосистемы в режиме минимума (Xрез+)",
+                formula: "X_{рез+} = X_{ТВ+}  + X_{ТН+} + Z_{smin}",
+                substitution: `X_{рез+} = ${results.XtvPlus} + ${results.XtnPlus} + ${results.Zsmin}`,
+                result: results.xresPlus,
+            },
+            {
+                title: "Вторичный номинальный ток на высокой стороне (I2vn)",
+                formula: "I_{2(ВН)} = \\frac{I_{vn} \\cdot K_{SHvn}}{K_{TTvn}}",
+                substitution: `I_{2(ВН)} = \\frac{${results.Ivn} \\cdot ${KSHvn}}{${KTTvn}}`,
+                result: results.I2vn,
+            },
+            {
+                title: "Вторичный номинальный ток на низкой стороне (I2nn)",
+                formula: "I_{2(НН)} = \\frac{I_{nn} \\cdot K_{SHnn}}{K_{TTnn}}",
+                substitution: `I_{2(НН)} = \\frac{${results.Inn} \\cdot ${KSHnn}}{${KTTnn}}`,
+                result: results.I2nn,
+            },
+            {
+                title: "Минимальные ток срабатывания защиты  (Iszmin)",
+                formula: "I_{szmin} = K_{o} \\cdot I_{vn}",
+                substitution: `I_{szmin} = ${results.Ko} \\cdot ${results.Ivn}`,
+                result: results.Iszmin,
+            },
+            {
+                title: "ток срабатывания реле на основной стороне (Icrvn)",
                 formula:
-                    "I_{udZ} = \\frac{100 \\cdot K_{1B}}{W_{v} \\cdot K_{схВ}}",
-                substitution: `I_{udZ} = \\frac{100 \\cdot 60}{${results.Wv} \\cdot \\sqrt{3}}`,
-                result: results.IudZ_true,
+                    "I_{с.р.вн} = \\frac{K_{схВ} \\cdot I_{с.з.}}{K_{1ВН}}",
+                substitution: `I_{с.р.вн} = \\frac{${KSHvn} \\cdot ${results.Iszmin}}{${KTTvn}}`,
+                result: results.Icrvn,
             },
             {
-                title: "Предварительное число витков реле для стороны НН (Wн')",
-                formula: "W_{n} = \\frac{W_{v} \\cdot I_{vn}}{I_{2nn}}",
-                substitution: `W_{n} = \\frac{${results.Wv} \\cdot ${results.I2vn}}{${results.I2nn}}`,
-                result: results.Wn,
+                title: "необходимое число витков рабочей обмотки НТТ реле для основной и других сторон (Wвн.расч)",
+                formula: "W_{вн.расч} = \\frac{F_{с.р}}{I_{с.р.вн}}",
+                substitution: `W_{вн.расч} = \\frac{100}{${results.Icrvn}}`,
+                result: results.Wvnrasch,
+            },
+
+            {
+                title: "Предварительное число витков реле для стороны НН (Wннрасч)",
+                formula:
+                    "W_{ннрасч} = \\frac{W_{вн.расч} \\cdot I_{2vn}}{I_{2nn}}",
+                substitution: `W_{ннрасч} = \\frac{${results.Wvnrasch} \\cdot ${results.I2vn}}{${results.I2nn}}`,
+                result: results.Wnrasch,
             },
             {
                 title: "Относительная погрешность, возникающую вследствие неточности выравнивания ампервитков в плечах защиты (Δf)",
-                formula: "Δf = |\\frac{W_{n}' - W_{n}}{W_{n}'}|",
-                substitution: `Δf = |\\frac{${
-                    results.Wn
-                } - ${results.Wn_fix}}{${results.Wn}}|`,
+                formula: "Δf = |\\frac{W_{нн.расч} - W_{нн}}{W_{нн.расч}}|",
+                substitution: `Δf = |\\frac{${results.Wnrasch_fix} - ${results.Wnrasch}}{${results.Wnrasch}}|`,
                 result: results.Δf,
             },
-			{
-                title: "Предварительное число витков тормозной обмотки реле (Wт')",
-                formula: "Wt' = \\frac{K_{o} \\cdot W \\cdot  I_{nb}}{0.75 \\cdot I_{t}}",
-                substitution: `Wt' = \\frac{${results.Ko} \\cdot ${results.Wn} \\cdot  ${results.Inb}}{0.75 \\cdot ${results.Ikvnmax}}`,
-                result: results.Wt_pred,
+
+            // {
+            //     title: "Уставка защиты для стороны ВН (IуДЗ)",
+            //     formula:
+            //         "I_{udZ} = \\frac{100 \\cdot K_{1B}}{W_{v} \\cdot K_{схВ}}",
+            //     substitution: `I_{udZ} = \\frac{100 \\cdot 60}{${results.Wvnrasch} \\cdot \\sqrt{3}}`,
+            //     result: results.Iszmin_true,
+            // },
+            // {
+            //     title: "Предварительное число витков реле для стороны НН (Wн')",
+            //     formula: "W_{n} = \\frac{W_{v} \\cdot I_{vn}}{I_{2nn}}",
+            //     substitution: `W_{n} = \\frac{${results.Wvnrasch} \\cdot ${results.I2vn}}{${results.I2nn}}`,
+            //     result: results.Wnrasch,
+            // },
+            // {
+
+            // {
+            //     title: "Предварительное число витков тормозной обмотки реле (Wт')",
+            //     formula:
+            //         "Wt' = \\frac{K_{o} \\cdot W \\cdot  I_{nb}}{0.75 \\cdot I_{t}}",
+            //     substitution: `Wt' = \\frac{${results.Ko} \\cdot ${results.Wnrasch} \\cdot  ${results.Inbrasch}}{0.75 \\cdot ${results.Ikvnmax}}`,
+            //     result: results.Wt_pred,
+            // },
+
+            {
+                title: "Ток небаланса, расчетный  (Iнб расч)",
+                formula: "I_{нб расч} = k_{пер} * k_{одн} * ε +0.01*a + Δf",
+                substitution: `I_{нб расч} = ${kper} * ${kodn} * ${epsi} +0.01*${a} + ${results.Δf}`,
+                result: results.Inbrasch,
             },
-			{
-                title: "Коэффициент чувствительности для режимов, когда торможение отсутствует  (Kч)",
-                formula: "Kч = \\frac{\\sqrt{3} \\cdot I_k3min}{2 \\cdot I_{уДЗ}}",
-                substitution: `Kч = \\frac{\\sqrt{3} \\cdot ${results.Ik3min}}{2 \\cdot ${results.IudZ_true}}`,
+
+            {
+                title: "Ток небаланса, приведенный к обмотке реле  (Iнб)",
+                formula: "I_{нб} = \\frac{I_{нб расч} \\cdot K_{cхВ}}{ K_cхТ}",
+                substitution: `I_{нб} = \\frac{${results.Inbrasch} \\cdot ${KSHvn}}{ ${KSHnn}}`,
+                result: results.Inb,
+            },
+
+            {
+                title: "Предварительное число витков тормозной обмотки реле (Wторм расч)",
+                formula:
+                    "W_{торм расч} = \\frac{K_{o} \\cdot W \\cdot  I_{nb}}{0.75 \\cdot I_{t}}",
+                substitution: `W_{торм расч} = \\frac{${results.Ko} \\cdot ${results.Wnrasch} \\cdot  ${results.Inbrasch}}{0.75 \\cdot ${results.Ikvnmax}}`,
+                result: results.Wt_fix,
+            },
+
+            {
+                title: "Чувствительность защиты при металлическом кз в защищаемой зоне, когда отсутствует торможение  (Kч)",
+                formula:
+                    "K_ч = \\frac{\\sqrt{3} \\cdot I_{k3min}}{2 \\cdot I_{сз мин}}",
+                substitution: `K_ч = \\frac{\\sqrt{3} \\cdot ${results.Ik3min}}{2 \\cdot ${results.Iszmin}}`,
                 result: results.k4,
             },
-			{
-                title: "Ток небаланса, приведенный к обмотке реле  (Iнб р)",
-                formula: "Iнб р = \\frac{I_нб \\cdot K_cхВ}{ K_cхТ}",
-                substitution: `Iнб р = \\frac{${results.Inb} \\cdot 1.73}{ 80}`,
-                result: results.Inbr,
-            },
-			{
+
+            {
                 title: "МДС , вызванная током небаланса (Fраб)",
-                formula: "F_раб = I_{нб р} \\cdot W_раб",
-                substitution: `F_раб = ${results.Inbr} \\cdot ${results.Wv}`,
+                formula: "F_{раб} = I_{нб} \\cdot W_{раб}",
+                substitution: `F_{раб} = ${results.Inb} \\cdot ${results.Wvnrasch}`,
                 result: results.Frab,
             },
-			{
+            {
                 title: "Ток к.з., приведенный к обмотке торможения (Iторм)",
-                formula: "Iторм = \\frac{I_{к3 27} \\cdot К_схВ \\cdot I_рн}{К_ттВ \\cdot I_рв}",
-                substitution: `Iторм = \\frac{${results.Ikvnmax} \\cdot 1.73 \\cdot ${results.I2nn}}{80 \\cdot ${results.I2vn}}`,
+                formula:
+                    "I_{торм} = \\frac{I_{к3 27} \\cdot К_{схВ} \\cdot I_рн}{К_{ттВ} \\cdot I_{рв}}",
+                substitution: `I_{торм} = \\frac{${results.Ikvnmax} \\cdot 1.73 \\cdot ${results.I2nn}}{80 \\cdot ${results.I2vn}}`,
                 result: results.Itorm,
             },
-			{
+            {
                 title: "Fторм, вызванная током внешнего к.з (Fторм)",
-                formula: "F_торм = I_{торм} \\cdot W_т",
-                substitution: `F_торм = ${results.Itorm} \\cdot ${results.Wt_fix}`,
+                formula: "F_{торм} = I_{торм} \\cdot W_т",
+                substitution: `F_{торм} = ${results.Itorm} \\cdot ${results.Wt_fix}`,
                 result: results.Ftorm,
             },
-			{
-                title: "tgα расчетный (tgα)",
-                formula: "tgα = \\frac{K_{отстр} \\cdot F_раб}{F_торм}",
-                substitution: `tgα = \\frac{1.5 \\cdot ${results.Frab}}{${results.Ftorm}}`,
-                result: results.tgaras,
-            },
+            // {
+            //     title: "tgα расчетный (tgα)",
+            //     formula: "tgα = \\frac{K_{отстр} \\cdot F_раб}{F_торм}",
+            //     substitution: `tgα = \\frac{1.5 \\cdot ${results.Frab}}{${results.Ftorm}}`,
+            //     result: results.tgaras,
+            // },
         ];
 
         setResults({ results, formulas });
