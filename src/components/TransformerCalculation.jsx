@@ -2,6 +2,7 @@ import { useState } from "react";
 import InputForm from "./InputForm";
 import Results from "./Results";
 
+
 const TransformerCalculation = () => {
     const [inputs, setInputs] = useState({
         Sn: 25000,
@@ -19,7 +20,7 @@ const TransformerCalculation = () => {
         kper: 1.1,
         kodn: 1,
         epsi: 0.1,
-        a: 16.0,
+        ka: 16.0,
     });
     const [results, setResults] = useState(null);
 
@@ -45,7 +46,7 @@ const TransformerCalculation = () => {
             kper,
             kodn,
             epsi,
-            a,
+            ka,
         } = inputs;
 
         // Выполнение расчетов
@@ -80,7 +81,7 @@ const TransformerCalculation = () => {
         const Δf = Math.abs(Wnrasch - Wnrasch.toFixed(0)) / Wnrasch;
 
         const Ikvnmax = (1000 * Umax) / (Math.sqrt(3) * (Zsmax + XtvMinus));
-        const Inbrasch = Ikvnmax * (kper * kodn * epsi + 0.01 * a + Δf);
+        const Inbrasch = Ikvnmax * (kper * kodn * epsi + 0.01 * ka + Δf);
 
         const Wt_pred = (Ko * Wnrasch * Inbrasch) / (0.75 * Ikvnmax);
 
@@ -92,6 +93,20 @@ const TransformerCalculation = () => {
         const Itorm = (Ikvnmax * 1.73 * I2nn) / (80 * I2vn);
         const Ftorm = Itorm * Wt_pred;
         const tgaras = (1.5 * Frab) / Ftorm;
+
+        const a = 0.0006658 
+        const b = 0.866
+        const c =  92.198
+
+        const kb = 0.866-Ftorm/Frab
+
+
+        const discr = kb*kb - 4*a*c
+        const Ftorm_ = (-kb-Math.sqrt(discr))/(2*a)
+
+        const frab_ = Math.pow(Ftorm_,2)*a+Ftorm_*b+c
+
+
 
         const results = {
             Ivn: Ivn.toFixed(2),
@@ -122,9 +137,21 @@ const TransformerCalculation = () => {
             Itorm: Itorm.toFixed(2),
             Ftorm: Ftorm.toFixed(2),
             tgaras: tgaras.toFixed(2),
+            frab_: frab_.toFixed(2),
+            
+            
         };
 
-        console.log();
+        const graph = {
+            a: a,
+            b: b,
+            c: c,
+            Frab: Frab.toFixed(2),
+            Ftorm: Ftorm.toFixed(2),
+            Ftorm_: Ftorm_,
+            frab_: frab_,
+        };
+
 
         const formulas = [
             {
@@ -233,34 +260,10 @@ const TransformerCalculation = () => {
                 substitution: `Δf = |\\frac{${results.Wnrasch_fix} - ${results.Wnrasch}}{${results.Wnrasch}}|`,
                 result: results.Δf,
             },
-
-            // {
-            //     title: "Уставка защиты для стороны ВН (IуДЗ)",
-            //     formula:
-            //         "I_{udZ} = \\frac{100 \\cdot K_{1B}}{W_{v} \\cdot K_{схВ}}",
-            //     substitution: `I_{udZ} = \\frac{100 \\cdot 60}{${results.Wvnrasch} \\cdot \\sqrt{3}}`,
-            //     result: results.Iszmin_true,
-            // },
-            // {
-            //     title: "Предварительное число витков реле для стороны НН (Wн')",
-            //     formula: "W_{n} = \\frac{W_{v} \\cdot I_{vn}}{I_{2nn}}",
-            //     substitution: `W_{n} = \\frac{${results.Wvnrasch} \\cdot ${results.I2vn}}{${results.I2nn}}`,
-            //     result: results.Wnrasch,
-            // },
-            // {
-
-            // {
-            //     title: "Предварительное число витков тормозной обмотки реле (Wт')",
-            //     formula:
-            //         "Wt' = \\frac{K_{o} \\cdot W \\cdot  I_{nb}}{0.75 \\cdot I_{t}}",
-            //     substitution: `Wt' = \\frac{${results.Ko} \\cdot ${results.Wnrasch} \\cdot  ${results.Inbrasch}}{0.75 \\cdot ${results.Ikvnmax}}`,
-            //     result: results.Wt_pred,
-            // },
-
             {
                 title: "Ток небаланса, расчетный  (Iнб расч)",
                 formula: "I_{нб расч} = k_{пер} * k_{одн} * ε +0.01*a + Δf",
-                substitution: `I_{нб расч} = ${kper} * ${kodn} * ${epsi} +0.01*${a} + ${results.Δf}`,
+                substitution: `I_{нб расч} = ${kper} * ${kodn} * ${epsi} +0.01*${ka} + ${results.Δf}`,
                 result: results.Inbrasch,
             },
 
@@ -306,15 +309,15 @@ const TransformerCalculation = () => {
                 substitution: `F_{торм} = ${results.Itorm} \\cdot ${results.Wt_fix}`,
                 result: results.Ftorm,
             },
-            // {
-            //     title: "tgα расчетный (tgα)",
-            //     formula: "tgα = \\frac{K_{отстр} \\cdot F_раб}{F_торм}",
-            //     substitution: `tgα = \\frac{1.5 \\cdot ${results.Frab}}{${results.Ftorm}}`,
-            //     result: results.tgaras,
-            // },
+            {
+                title: "Fраб, по графику (раб, с.р)",
+                //formula: "F_{раб, с.р}",
+                substitution: `F_{раб, с.р} = ${results.Frab_}`,
+                result: results.frab_,
+            },
         ];
 
-        setResults({ results, formulas });
+        setResults({ results, formulas, graph });
     };
 
     return (
@@ -325,7 +328,7 @@ const TransformerCalculation = () => {
                 handleChange={handleChange}
                 handleSubmit={calculateResults}
             />
-            <Results results={results?.results} formulas={results?.formulas} />
+            <Results results={results?.results} formulas={results?.formulas} graph={results?.graph}/>
         </div>
     );
 };

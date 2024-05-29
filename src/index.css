@@ -23,12 +23,10 @@ a:hover {
 }
 
 body {
-  padding: 20px;
-  margin: 0;
-  display: flex;
-  place-items: center;
-  justify-content: center;
-  min-width: 320px;
+  margin:auto;
+  max-width:1024px;
+  padding:10px;
+  min-width: 240px;
   min-height: 100vh;
 }
 
@@ -69,33 +67,133 @@ button:focus-visible {
   }
 }
 
-.inputForm {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px
+
+.container {
+  width: 100%;
+  max-width: 700px; /* Максимальная ширина для больших экранов */
+  margin: 0 auto; Центрирование контейнера
+  padding: 20px;
+  box-sizing: border-box;
+  /* display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center */
 }
+
+/* Стили для InputForm */
 .cont {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.inputForm {
+  display: grid;
   gap: 10px;
 }
 
 .inputDiv {
-  display: flex;   
+  display: flex;
   justify-content: space-between;
+  flex-wrap: wrap; /* Разрешить перенос метки и инпута на следующую строку на малых экранах */
 }
+
 .input {
   margin-left: 5px;
-  width: 300px;
-}
-
-
-.container {
   width: 100%;
-  display: flex;
-  flex-flow: column wrap;
-  align-items: center;
-  margin-left: auto;
-  margin-right: auto;
-  justify-content: space-between;
 }
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Респонсивные стили */
+@media (max-width: 480px) {
+  .inputDiv {
+    flex-direction: column; /* Вертикально располагаем метку и инпут на очень малых экранах */
+    align-items: flex-start;
+  }
+
+  .input {
+    width: 100%; /* Полная ширина инпутов на очень малых экранах */
+    margin-left: 0;
+  }
+
+  button {
+    width: 100%; /* Полная ширина кнопки на очень малых экранах */
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  .inputForm {
+    grid-template-columns: 1fr; /* Одна колонка на небольших экранах */
+  }
+
+  .input {
+    width: calc(100% - 80px); /* Оставить место для метки на небольших экранах */
+  }
+}
+
+@media (min-width: 365px) and (max-width: 481px) {
+  
+}
+
+@media (min-width: 768px) {
+  .inputForm {
+    grid-template-columns: repeat(2, 1fr); /* Две колонки на средних экранах */
+  }
+
+  .input {
+    width: 100%; /* Полная ширина инпутов на средних экранах */
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 40px; /* Дополнительные отступы для больших экранов */
+  }
+
+  .inputForm {
+    grid-template-columns: repeat(2, 1fr); /* Две колонки на больших экранах */
+  }
+
+  .input {
+    width: calc(100% - 80px); /* Оставить место для метки на больших экранах */
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1200px; /* Максимальная ширина для очень больших экранов */
+  }
+}
+
+/* Стили для Results */
+.resultsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.resultItem {
+  margin-bottom: 20px;
+}
+
+.resultItem h3 {
+  margin: 0;
+}
+
+hr {
+  margin: 20px 0;
+}
+
+.graphContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+
